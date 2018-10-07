@@ -13,7 +13,7 @@ __kernel void sum(__global unsigned int *a, __global unsigned int *results, unsi
     int old_offset = 0;
     int offset = WORK_GROUP_SIZE;
 
-    if (local_id < n) {
+    if (global_id < n) {
         mem[local_id] = a[global_id];
     } else {
         mem[local_id] = 0;

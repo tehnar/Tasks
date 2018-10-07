@@ -83,7 +83,7 @@ int main(int argc, char **argv)
 
             gpu::gpu_mem_32u gpu_old_buffer = gpu_a;
 
-            while (n1 >= work_group_size) {
+            while (n1 > 1) {
                 gpu::gpu_mem_32u gpu_buffer;
                 unsigned int buffer_size = (n1 + work_group_size - 1) / work_group_size;
                 gpu_buffer.resizeN(buffer_size);
@@ -93,12 +93,8 @@ int main(int argc, char **argv)
                 gpu_old_buffer = gpu_buffer;
             }
 
-            std::vector<unsigned int> sums(n1);
-            gpu_old_buffer.readN(sums.data(), n1);
             unsigned int sum = 0;
-            for (int j = 0; j < n1; j++) {
-                sum += sums[j];
-            }
+            gpu_old_buffer.readN(&sum, 1);
 
             EXPECT_THE_SAME(reference_sum, sum, "GPU result should be consistent!");
 
