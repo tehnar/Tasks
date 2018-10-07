@@ -71,13 +71,16 @@ __kernel void prefix_sum(
     printf("local_id=%d\n", local_id);
 
     for (unsigned int step = 1; step < WORK_GROUP_SIZE; step *= 2) {
+        printf("local_id=%d step=%u, start for\n", local_id, step);
         if (local_id >= step) {
             result[local_id] = mem[local_id] + mem[local_id - step];
         } else {
             result[local_id] = mem[local_id];
         }
 
+        printf("local_id=%d step=%u, before barrier\n", local_id, step);
         barrier(CLK_LOCAL_MEM_FENCE);
+        printf("local_id=%d step=%u, after barrier\n", local_id, step);
 
         __local int *tmp = mem;
         mem = result;
