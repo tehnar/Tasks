@@ -32,7 +32,9 @@ gpu::gpu_mem_32i prefix_sum(
     unsigned int block_buffer_size = (n + work_group_size - 1) / work_group_size;
     block_sums.resizeN(block_buffer_size);
 
+    std::cerr << "n=" << n << std::endl;
     ocl_prefix_sum_kernel.exec(gpu::WorkSize(work_group_size, n), a_gpu, a_gpu, prefix_sums, block_sums, 0, n);
+    std::cerr << "n=" << n << std::endl;
 
     if (n <= work_group_size) {
         return prefix_sums;
@@ -111,19 +113,13 @@ int main(int argc, char **argv)
 
             unsigned int work_group_size = 256;
 
-            std::cerr << 1 << std::endl;
-
             ocl::Kernel ocl_prefix_sum_kernel(
                     max_kernel, max_kernel_length, "prefix_sum", "-DWORK_GROUP_SIZE=" + to_string(work_group_size));
             ocl_prefix_sum_kernel.compile(false);
 
-            std::cerr << 2 << std::endl;
-
             ocl::Kernel ocl_max_kernel(
                     max_kernel, max_kernel_length, "calc_max", "-DWORK_GROUP_SIZE=" + to_string(work_group_size));
             ocl_max_kernel.compile(false);
-
-            std::cerr << 3 << std::endl;
 
             gpu::gpu_mem_32i a_gpu;
             a_gpu.resizeN(n);

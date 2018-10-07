@@ -9,6 +9,7 @@ __kernel void calc_max(__global int *a, __global int *results, unsigned int n) {
     unsigned int local_id = get_local_id(0);
     unsigned int global_id = get_global_id(0);
 
+    printf("local_id=%d\n", local_id);
     int old_offset = 0;
     int offset = WORK_GROUP_SIZE;
 
@@ -18,6 +19,8 @@ __kernel void calc_max(__global int *a, __global int *results, unsigned int n) {
         mem[local_id] = -1000000000;
     }
     barrier(CLK_LOCAL_MEM_FENCE);
+
+    printf("local_id=%d\n", local_id);
 
     for (int step = WORK_GROUP_SIZE / 2; step > 0; step /= 2) {
         if (local_id < step) {
@@ -50,6 +53,8 @@ __kernel void prefix_sum(
     __local int *mem = mem1;
     __local int *result = result1;
 
+    printf("local_id=%d\n", local_id);
+
     if (global_id < n) {
         mem[local_id] = result[local_id] = a[global_id];
     } else {
@@ -62,6 +67,8 @@ __kernel void prefix_sum(
         result[0] += prev_value;
     }
     barrier(CLK_LOCAL_MEM_FENCE);
+
+    printf("local_id=%d\n", local_id);
 
     for (unsigned int step = 1; step < WORK_GROUP_SIZE; step *= 2) {
         if (local_id >= step) {
