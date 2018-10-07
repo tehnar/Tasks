@@ -32,9 +32,7 @@ gpu::gpu_mem_32i prefix_sum(
     unsigned int block_buffer_size = (n + work_group_size - 1) / work_group_size;
     block_sums.resizeN(block_buffer_size);
 
-    std::cerr << "n=" << n << std::endl;
     ocl_prefix_sum_kernel.exec(gpu::WorkSize(work_group_size, n), a_gpu, a_gpu, prefix_sums, block_sums, 0, n);
-    std::cerr << "n=" << n << std::endl;
 
     if (n <= work_group_size) {
         return prefix_sums;
