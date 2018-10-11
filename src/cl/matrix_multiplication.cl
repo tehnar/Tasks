@@ -21,7 +21,7 @@ __kernel void matrix_multiplication(
 
     __local float mem_a[WORK_GROUP_SIZE][WORK_GROUP_SIZE];
     __local float mem_b[WORK_GROUP_SIZE][WORK_GROUP_SIZE];
-    __local float mem_b_t[WORK_GROUP_SIZE][WORK_GROUP_SIZE];
+    __local float mem_a_t[WORK_GROUP_SIZE][WORK_GROUP_SIZE];
 
     float dot_product = 0;
 
@@ -47,12 +47,12 @@ __kernel void matrix_multiplication(
         barrier(CLK_LOCAL_MEM_FENCE);
 
         int y = (local_id_y + local_id_x) % WORK_GROUP_SIZE;
-        mem_b_t[y][local_id_x] = mem_b[local_id_x][y];
+        mem_a_t[y][local_id_x] = mem_a[local_id_x][y];
 
         barrier(CLK_LOCAL_MEM_FENCE);
 
         for (int i = 0; i < WORK_GROUP_SIZE; i++) {
-            dot_product += mem_a[local_id_x][i] * mem_b_t[local_id_y][i];
+            dot_product += mem_a_t[i][local_id_x] * mem_b[i][local_id_y];
         }
 
         barrier(CLK_LOCAL_MEM_FENCE);
