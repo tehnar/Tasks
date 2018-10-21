@@ -1,20 +1,22 @@
 #ifdef __CLION_IDE__
 #include <libgpu/opencl/cl/clion_defines.cl>
+#define RADIX_BITS 4
 #endif
 
-#define RADIX_BITS 4
 #line 7
 
 __kernel void move_numbers(
         __global unsigned int* a,
+        __global unsigned int* b,
         __global unsigned int *number_count,
         unsigned int start_bit,
         unsigned int n) {
-    int global_id = get_global_id(0);
+    unsigned int global_id = get_global_id(0);
     if (global_id < n) {
         unsigned int x = a[global_id];
         unsigned int val = (x >> start_bit) & ((1 << RADIX_BITS) - 1);
-        number_count[val * n + global_id] = 1;
+        unsigned int move_pos = number_count[val * n + global_id] - 1;
+        b[move_pos] = x;
     }
 }
 
@@ -24,11 +26,13 @@ __kernel void fill_bit_count(
         __global unsigned int *number_count_output,
         unsigned int start_bit,
         unsigned int n) {
-    int global_id = get_global_id(0);
+    unsigned int global_id = get_global_id(0);
     if (global_id < n) {
         unsigned int x = a[global_id];
         unsigned int val = (x >> start_bit) & ((1 << RADIX_BITS) - 1);
-        number_count_output[val * n + global_id] = 1;
+        for (int i = 0; i < (1 << RADIX_BITS); i++) {
+            number_count_output[i * n + global_id] = i == val;
+        }
     }
 }
 

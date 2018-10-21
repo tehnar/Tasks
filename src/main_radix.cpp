@@ -36,7 +36,8 @@ gpu::gpu_mem_32u prefix_sum(
     unsigned int block_buffer_size = (n + work_group_size - 1) / work_group_size;
     block_sums.resizeN(block_buffer_size);
 
-    ocl_prefix_sum_kernel.exec(gpu::WorkSize(work_group_size, n), a_gpu, a_gpu, prefix_sums, block_sums, 0, n);
+    ocl_prefix_sum_kernel.exec(
+            gpu::WorkSize(work_group_size, n), a_gpu, a_gpu, prefix_sums, block_sums, 0, n);
 
     if (n <= work_group_size) {
         return prefix_sums;
@@ -60,6 +61,25 @@ void radix_sort(
         unsigned int work_group_size,
         unsigned int radix_bits) {
 
+    unsigned int global_work_size = (n + work_group_size - 1) / work_group_size * work_group_size;
+
+    gpu::gpu_mem_32u count_buf;
+    count_buf.resizeN(n * (1 << radix_bits));
+
+    gpu::gpu_mem_32u b_gpu;
+    b_gpu.resizeN(n);
+
+    for (int start = 0; start < sizeof(unsigned int) * 8; start += radix_bits) {
+        fill_bit_count_kernel.exec(
+                gpu::WorkSize(work_group_size, global_work_size), a_gpu, count_buf, start, n);
+
+        gpu::gpu_mem_32u sum = prefix_sum(count_buf, prefix_sum_kernel, n * (1 << radix_bits), work_group_size);
+
+        move_numbers_kernel.exec(gpu::WorkSize(work_group_size, global_work_size), a_gpu, b_gpu, sum, start, n);
+
+        a_gpu.swap(b_gpu);
+    }
+
 }
 
 int main(int argc, char **argv)
@@ -71,7 +91,7 @@ int main(int argc, char **argv)
     context.activate();
 
     int benchmarkingIters = 1;
-    unsigned int n = 1000;
+    unsigned int n = 32 * 1024 * 1024;
     std::vector<unsigned int> as(n, 0);
     FastRandom r(n);
     for (unsigned int i = 0; i < n; ++i) {
@@ -96,17 +116,14 @@ int main(int argc, char **argv)
 
     {
         unsigned int work_group_size = 256;
-        unsigned int radix_bits = 4;
+        unsigned int radix_bits = 2;
 
-        std::cout << "-DWORK_GROUP_SIZE=" + to_string(work_group_size) + " -DRADIX_BITS=" + to_string(radix_bits) << std::endl;
-        ocl::Kernel move_numbers(
-                radix_kernel, radix_kernel_length, "move_numbers",
-                "-DWORK_GROUP_SIZE=" + to_string(work_group_size) + " -DRADIX_BITS=" + to_string(radix_bits));
+        std::string compile_flags =
+                "-DWORK_GROUP_SIZE=" + to_string(work_group_size) + " -DRADIX_BITS=" + to_string(radix_bits);
+        ocl::Kernel move_numbers(radix_kernel, radix_kernel_length, "move_numbers", compile_flags);
         ocl::Kernel prefix_sum(
-                radix_kernel, radix_kernel_length, "prefix_sum", "-DWORK_GROUP_SIZE=" + to_string(work_group_size));
-        ocl::Kernel fill_bit_count(
-                radix_kernel, radix_kernel_length, "fill_bit_count",
-                "-DWORK_GROUP_SIZE=" + to_string(work_group_size) + " -DRADIX_BITS=" + to_string(radix_bits));
+                radix_kernel, radix_kernel_length, "prefix_sum", compile_flags);
+        ocl::Kernel fill_bit_count(radix_kernel, radix_kernel_length, "fill_bit_count", compile_flags);
 
         move_numbers.compile();
         prefix_sum.compile();
@@ -118,7 +135,7 @@ int main(int argc, char **argv)
 
             t.restart(); // Запускаем секундомер после прогрузки данных чтобы замерять время работы кернела, а не трансфер данных
 
-            radix_sort();
+            radix_sort(as_gpu, prefix_sum, move_numbers, fill_bit_count, n, work_group_size, radix_bits);
 //            unsigned int global_work_size = (n + workGroupSize - 1) / workGroupSize * workGroupSize;
 //            radix.exec(gpu::WorkSize(workGroupSize, global_work_size),
 //                       as_gpu, n);
